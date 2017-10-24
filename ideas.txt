@@ -1,0 +1,7 @@
+ create tracker file on startup
+ if data is empty in tracker file then start crawl from the begining 
+ 	else if the data is not empty then resume the crawl from the specific page and line number
+ 	-while resuming the crawl of the data ... use the stateList from the stateList file..
+ 	- crawl all the links and put each state's cities in the city list.
+ 	-check if the city url matches with the trackerfile data url.
+ 	- if the url matches get the index of the url from the cityList and crawl from that specific url
