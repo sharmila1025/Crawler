@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,10 +33,148 @@ public class GlassdoorJobRepoJsoup {
 		return Jsoup.parse(html).text();
 	}
 
+	public List<String> readStateJobFile(String statename) {
+
+		File file = new File("glassdoor/" + statename + ".json");
+		List<String> data = null;
+		if (file.exists()) {
+
+			try {
+				data = FileUtils.readLines(file);
+				System.out.println(data);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		} else {
+
+			System.out.println("FILE doesnot exist");
+		}
+
+		return data;
+	}
+
+	public void getCompanyInfo(String companyDetailsUrl) {
+
+		Document document = fromGoogleBot(companyDetailsUrl);
+		Elements elements2 = document.select("article#MainCol");
+
+		for (Element element : elements2) {
+
+			Elements sc = element.getElementsByTag("script");
+			String jsonBeforeParse = sc.html();
+			System.out.println(jsonBeforeParse);
+		}
+		Elements elements = document.select("div#EmpBasicInfo.module.empBasicInfo  ");
+		System.out.println(" here ");
+		for (Element element : elements) {
+			System.out.println(" elements found ");
+			System.out.println("BEFORE DIV " + element);
+			Elements info = element.getElementsByTag("div");
+
+			for (Element in : info) {
+				System.out.println(" INFO ENTITY FOUND " + in);
+			}
+			if (element.getElementsByTag("label").text().equalsIgnoreCase("Headquarters")) {
+				System.out.println("Headquaters" + element.getElementsByTag("span").text());
+			} else if (element.getElementsByTag("label").text().equalsIgnoreCase("Industry")) {
+				System.out.println("Industry" + element.getElementsByTag("span").text());
+			}
+
+		}
+
+	}
+
+	public void getDataFromURL() {
+		// https://www.glassdoor.com/Job/alabaster-jobs-SRCH_IL.0,9_IC1127424_IP35.htm
+		JobData glassDoor = new JobData();
+		int hit=0;
+		// construct uri to crawl through each page
+		for (int i = 35; i <= 384; i++) {
+			if(hit==3){
+				System.out.println("CHANGE THE URL and set hit to 0");
+			}
+			Document docCity = fromGoogleBot(
+					"https://www.glassdoor.com/Job/alabaster-jobs-SRCH_IL.0,9_IC1127424" + "_IP" + i + ".htm");
+			
+			if ((docCity.body().hasText() == true)) {
+				System.out.println("has text");
+				Elements e = docCity.select("article#MainCol div.padHorz");
+				for (Element ele : e) {
+					System.out.println(" got the class ");
+					String errorMessage = "We're sorry, but your search timed out due to high volumes. Please try again.";
+					if (ele.getElementsByTag("p").text().equalsIgnoreCase(errorMessage)) {
+						System.out.println(" error message in the page ");
+						hit++;
+						break;
+					} else {
+						System.out.println(" no  match");
+					}
+				}
+
+			}
+			System.out.println(" till here");
+			if (!docCity.hasText()) {
+				System.out.println("no data ");
+			}
+			// System.out.println(docCity.select("*"));
+			Elements allElements = docCity.select("#JobResults ul.jlGrid li.jl ");
+			int num = 0;
+
+			for (Element allElement : allElements) {
+				System.out.println(
+						"--********************* JOB INFO STARTS***********************************--" + num++);
+				// getting the first class named flexbox
+				Element flex = allElement.getElementsByClass("flexbox").get(0);
+
+				System.out.println();
+				System.out.println();
+				Set<String> titleSet = new HashSet<>();
+				System.out.println("---Title ---" + flex.getElementsByClass("jobLink").text());
+				titleSet.add(allElement.getElementsByClass("jobLink").text());
+				System.out.println(" JOB LINK ----" + "https://www.glassdoor.com"
+						+ flex.getElementsByClass("jobLink").attr("href"));
+				glassDoor.setCompanyDetailUrl(
+						"https://www.glassdoor.com" + flex.getElementsByClass("jobLink").attr("href"));
+
+				glassDoor.setJobTitle(titleSet);
+
+				Elements jobLocationTime = allElement.getElementsByClass("empLoc");
+
+				for (Element ejobLocationTime : jobLocationTime) {
+					System.out.println();
+					System.out.println();
+
+					String[] companyName = ejobLocationTime.getElementsByTag("div").get(0).text().split("–");
+					System.out.println("---Company name--" + companyName[0]);
+
+					System.out.println("---Location name--" + ejobLocationTime.getElementsByClass("loc").text());
+					glassDoor.setCompanyName(companyName[0]);
+					glassDoor.setLocation(ejobLocationTime.getElementsByClass("loc").text());
+					System.out.println();
+					System.out.println();
+
+				}
+				Elements time = allElement.getElementsByClass("showHH");
+
+				for (Element t : time) {
+					System.out.println(" text " + t.getElementsByTag("span").get(0).text());
+					glassDoor.setEntryDate(t.getElementsByTag("span").get(0).text());
+				}
+				// write glassdoor data to a file
+				System.out.println(" GLASSDOOR OBJ " + glassDoor.toString());
+				// writeDataToFile(glassDoor, stateName);
+				System.out.println("--********************* JOB INFO ENDS***********************************--");
+			}
+
+		}
+
+	}
+
 	public void crawl() {
 
 		String stateName = null;
-		String dataId = null;
+
 		// crawling by states
 		Document document = fromGoogleBot("https://www.glassdoor.com/sitedirectory/city-jobs.htm");
 		Elements elements = document.select(".stateList li");
@@ -80,94 +220,62 @@ public class GlassdoorJobRepoJsoup {
 				// that assign page number
 
 				String url = cityList.get(0).replaceAll("\\.htm", "");
-
+				int hit = 0;
 				int totalPages = Integer.parseInt(e.getElementById("TotalPages").attr("value"));
 				for (int i = 1; i <= totalPages; i++) {
 					// construct uri to crawl through each page
 					System.out.println("THIS " + "https://www.glassdoor.com" + url + "_IP" + i + ".htm");
 					Document docCity = fromGoogleBot("https://www.glassdoor.com" + url + "_IP" + i + ".htm");
 
-					Elements jobScript = docCity.select("article#MainCol");
-					for (Element jsc : jobScript) {
-						try {
-							String d = jsc.getElementsByTag("script").html();
-							String scriptJson = htmlToText(jsc.getElementsByTag("script").html());
-							System.out.println("*************************");
-							System.out.println(scriptJson);
-							System.out.println("*************************");
-							JSONObject jsonObject = new JSONObject(scriptJson);
-							JSONArray jsonArray = new JSONArray();
-							jsonArray = jsonObject.getJSONArray("itemListElement");
-							for (int j = 0; i < jsonArray.length(); i++) {
+					Elements allElements = docCity.select("#JobResults ul.jlGrid li.jl ");
+					int num = 0;
+					for (Element allElement : allElements) {
+						System.out.println(
+								"--********************* JOB INFO STARTS***********************************--" + num++);
+						// getting the first class named flexbox
+						Element flex = allElement.getElementsByClass("flexbox").get(0);
 
-								JSONObject js = (JSONObject) jsonArray.get(i);
+						System.out.println();
+						System.out.println();
+						Set<String> titleSet = new HashSet<>();
+						System.out.println("---Title ---" + flex.getElementsByClass("jobLink").text());
+						titleSet.add(allElement.getElementsByClass("jobLink").text());
+						System.out.println(" JOB LINK ----" + "https://www.glassdoor.com"
+								+ flex.getElementsByClass("jobLink").attr("href"));
+						glassDoor.setCompanyDetailUrl(
+								"https://www.glassdoor.com" + flex.getElementsByClass("jobLink").attr("href"));
 
-								glassDoor.setCompanyDetailUrl(js.getString("url"));
+						glassDoor.setJobTitle(titleSet);
 
-								// System.out.println(" Company detail url :" +
-								// js.getString("url"));
-								String[] urlJobDataId = js.getString("url").split("jl=");
+						Elements jobLocationTime = allElement.getElementsByClass("empLoc");
 
-								if (urlJobDataId[1].equals(dataId)) {
-									System.out.println("JOB ID MATCHES ");
-									glassDoor.setCompanyDetailUrl(js.getString("url"));
-								}
+						for (Element ejobLocationTime : jobLocationTime) {
+							System.out.println();
+							System.out.println();
 
-							}
+							String[] companyName = ejobLocationTime.getElementsByTag("div").get(0).text().split("–");
+							System.out.println("---Company name--" + companyName[0]);
 
-						} catch (JSONException e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
-						
-						
-						
-						Elements allElement = docCity.select("article#MainCol .jlGrid li.jl");
-
-						for (Element allEle : allElement) {
-							System.out.println("--****--");
-
-							System.out.println(" JOB DATA ID " + allEle.attr("data-id"));
-							dataId = allEle.attr("data-id");
-
-							Elements flex = docCity.select("div.flexbox");
-							for (Element eCity : flex) {
-
-								Elements jobTitle = eCity.getElementsByClass("jobLink");
-								for (Element eJobTitle : jobTitle) {
-
-									// System.out.println("---TITLE-----" +
-									// eJobTitle.text());
-									Set<String> titleSet = new HashSet<>();
-									titleSet.add(eJobTitle.text());
-									glassDoor.setJobTitle(titleSet);
-								}
-
-								Elements jobLocation = eCity.getElementsByClass("empLoc");
-
-								for (Element ejobLocation : jobLocation) {
-
-									glassDoor.setCompanyName(ejobLocation.getElementsByTag("div").text());
-									glassDoor.setLocation(ejobLocation.getElementsByTag("span").text());
-								}
-
-								Elements jobTime = eCity.getElementsByClass("showHH");
-
-								for (Element j : jobTime) {
-
-									// System.out.println("----TIME-----" +
-									// j.getElementsByClass("minor").text());
-									glassDoor.setEntryDate(j.getElementsByClass("minor").text());
-								}
-							}
+							System.out
+									.println("---Location name--" + ejobLocationTime.getElementsByClass("loc").text());
+							glassDoor.setCompanyName(companyName[0]);
+							glassDoor.setLocation(ejobLocationTime.getElementsByClass("loc").text());
+							System.out.println();
+							System.out.println();
 
 						}
+						Elements time = allElement.getElementsByClass("showHH");
+
+						for (Element t : time) {
+							System.out.println(" text " + t.getElementsByTag("span").get(0).text());
+							glassDoor.setEntryDate(t.getElementsByTag("span").get(0).text());
+						}
+						// write glassdoor data to a file
+						System.out.println(" GLASSDOOR OBJ " + glassDoor.toString());
+						writeDataToFile(glassDoor, stateName);
+						System.out
+								.println("--********************* JOB INFO ENDS***********************************--");
 					}
-
-					
-					// write glassdoor data to a file
-					System.out.println(" GLASSDOOR OBJ " + glassDoor.toString());
-					writeDataToFile(glassDoor, stateName);
 
 				}
 
@@ -213,6 +321,8 @@ public class GlassdoorJobRepoJsoup {
 
 	public static void main(String[] args) {
 		GlassdoorJobRepoJsoup g = new GlassdoorJobRepoJsoup();
-		g.crawl();
+		// g.crawl();
+		g.getDataFromURL();
+		// g.getCompanyInfo("https://www.glassdoor.com/job-listing/registered-nurse-rn-med-surg-stepdown-unit-st-vincent-s-east-ft-nights-72-hours-bi-weekly-saint-vincents-health-system-JV_IC1127429_KO0,89_KE90,118.htm?jl=2568690532&ctt=1508921829872");
 	}
 }
