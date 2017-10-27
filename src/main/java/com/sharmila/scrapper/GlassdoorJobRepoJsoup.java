@@ -25,6 +25,7 @@ import org.jsoup.select.Elements;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
+import com.sharmila.scrapper.domain.CompanyData;
 import com.sharmila.scrapper.domain.JobData;
 import com.sharmila.scrapper.domain.Tracker;
 
@@ -54,123 +55,71 @@ public class GlassdoorJobRepoJsoup {
 		return data;
 	}
 
-	public void getCompanyInfo(String companyDetailsUrl) {
+	public void getCompanyInfo() {
 
-		Document document = fromGoogleBot(companyDetailsUrl);
-		Elements elements2 = document.select("article#MainCol");
+		// read employerIdFile and crawl each unique Id
+		File employerIdFile = new File("glassdoor/employerId.txt");
+		try {
+			List<String> empID = FileUtils.readLines(employerIdFile);
+			for (int i = 0; i < empID.size(); i++) {
+				CompanyData companyData = new CompanyData();
 
-		for (Element element : elements2) {
+				String companyDetailsUrl = "https://www.glassdoor.com/Overview/companyOverviewBasicInfoAjax.htm?&employerId="
+						+ empID.get(i) + "&title=+Overview&linkCompetitors=true";
+				Document document = fromGoogleBot(companyDetailsUrl);
+				Elements elements = document.select("div#EmpBasicInfo.module.empBasicInfo  ");
+				System.out.println(" here ");
+				for (Element element : elements) {
 
-			Elements sc = element.getElementsByTag("script");
-			String jsonBeforeParse = sc.html();
-			System.out.println(jsonBeforeParse);
-		}
-		Elements elements = document.select("div#EmpBasicInfo.module.empBasicInfo  ");
-		System.out.println(" here ");
-		for (Element element : elements) {
-			System.out.println(" elements found ");
-			System.out.println("BEFORE DIV " + element);
-			Elements info = element.getElementsByTag("div");
+					Elements infos = element.getElementsByClass("infoEntity");
 
-			for (Element in : info) {
-				System.out.println(" INFO ENTITY FOUND " + in);
-			}
-			if (element.getElementsByTag("label").text().equalsIgnoreCase("Headquarters")) {
-				System.out.println("Headquaters" + element.getElementsByTag("span").text());
-			} else if (element.getElementsByTag("label").text().equalsIgnoreCase("Industry")) {
-				System.out.println("Industry" + element.getElementsByTag("span").text());
-			}
+					for (Element info : infos) {
+						// System.out.println(" INFO ENTITY FOUND " + info);
+						// System.out.println(info.getElementsByTag("label").text());
+						if (info.getElementsByTag("label").text().equals("Headquarters")) {
+							companyData.setHeadQuaters(info.getElementsByClass("value").text());
+							System.out.println("Headquaters " + info.getElementsByClass("value").text());
+						}
 
-		}
+						else if (info.getElementsByTag("label").text().equals("Industry")) {
+							List<String> industryList = new ArrayList<>();
+							industryList.add(info.getElementsByClass("value").text());
+							companyData.setIndustry(industryList);
+							System.out.println("Industry " + info.getElementsByClass("value").text());
+						}
 
-	}
+						else if (info.getElementsByTag("label").text().equals("Website")) {
 
-	public void getDataFromURL() {
-		// https://www.glassdoor.com/Job/alabaster-jobs-SRCH_IL.0,9_IC1127424_IP35.htm
-		JobData glassDoor = new JobData();
-		int hit = 0;
-		// construct uri to crawl through each page
-		for (int i = 35; i <= 384; i++) {
-			if (hit == 3) {
-				System.out.println("CHANGE THE URL and set hit to 0");
-			}
-			Document docCity = fromGoogleBot(
-					"https://www.glassdoor.com/Job/alabaster-jobs-SRCH_IL.0,9_IC1127424" + "_IP" + i + ".htm");
-			System.out.println("THIS " + "https://www.glassdoor.com/Job/alabaster-jobs-SRCH_IL.0,9_IC1127424" + "_IP"
-					+ i + ".htm");
-			if ((docCity.body().hasText() == true)) {
-				System.out.println("has text");
-				Elements e = docCity.select("article#MainCol div.padHorz");
-				for (Element ele : e) {
-					System.out.println(" got the class ");
-					System.out.println(ele);
-					String errorMessage = "We're sorry, but your search timed out due to high volumes. Please try again.";
-					if (ele.getElementsByTag("p").text().equalsIgnoreCase(errorMessage)) {
-						System.out.println(" error message in the page ");
-						hit++;
-						break;
-					} else {
-						System.out.println(" no  match");
+							companyData.setWebsite(info.getElementsByClass("value").text());
+							System.out.println("Industry " + info.getElementsByClass("value").text());
+						} else if (info.getElementsByTag("label").text().equals("Size")) {
+
+							companyData.setSize(info.getElementsByClass("value").text());
+							System.out.println("Industry " + info.getElementsByClass("value").text());
+						} else if (info.getElementsByTag("label").text().equals("Founded")) {
+
+							companyData.setFounded(info.getElementsByClass("value").text());
+							System.out.println("Founded " + info.getElementsByClass("value").text());
+						} else if (info.getElementsByTag("label").text().equals("Type")) {
+
+							companyData.setType(info.getElementsByClass("value").text());
+							System.out.println("Type " + info.getElementsByClass("value").text());
+						}
+						// Revenue
+						else if (info.getElementsByTag("label").text().equals("Revenue")) {
+
+							companyData.setRevenue(info.getElementsByClass("value").text());
+							System.out.println("revenue " + info.getElementsByClass("value").text());
+						}
 					}
+
 				}
 
 			}
-			System.out.println(" till here");
-			if (!docCity.hasText()) {
-				System.out.println("no data ");
-			}
-			// System.out.println(docCity.select("*"));
-			Elements allElements = docCity.select("#JobResults ul.jlGrid li.jl ");
-			int num = 0;
-
-			for (Element allElement : allElements) {
-				System.out.println(
-						"--********************* JOB INFO STARTS***********************************--" + num++);
-				// getting the first class named flexbox
-				Element flex = allElement.getElementsByClass("flexbox").get(0);
-
-				System.out.println();
-				System.out.println();
-				Set<String> titleSet = new HashSet<>();
-				System.out.println("---Title ---" + flex.getElementsByClass("jobLink").text());
-				titleSet.add(allElement.getElementsByClass("jobLink").text());
-				System.out.println(" JOB LINK ----" + "https://www.glassdoor.com"
-						+ flex.getElementsByClass("jobLink").attr("href"));
-				glassDoor.setCompanyDetailUrl(
-						"https://www.glassdoor.com" + flex.getElementsByClass("jobLink").attr("href"));
-
-				glassDoor.setJobTitle(titleSet);
-
-				Elements jobLocationTime = allElement.getElementsByClass("empLoc");
-
-				for (Element ejobLocationTime : jobLocationTime) {
-					System.out.println();
-					System.out.println();
-
-					String[] companyName = ejobLocationTime.getElementsByTag("div").get(0).text().split("–");
-					System.out.println("---Company name--" + companyName[0]);
-
-					System.out.println("---Location name--" + ejobLocationTime.getElementsByClass("loc").text());
-					glassDoor.setCompanyName(companyName[0]);
-					glassDoor.setLocation(ejobLocationTime.getElementsByClass("loc").text());
-					System.out.println();
-					System.out.println();
-
-				}
-				Elements time = allElement.getElementsByClass("showHH");
-
-				for (Element t : time) {
-					System.out.println(" text " + t.getElementsByTag("span").get(0).text());
-					glassDoor.setEntryDate(t.getElementsByTag("span").get(0).text());
-				}
-				// write glassdoor data to a file
-				System.out.println(" GLASSDOOR OBJ " + glassDoor.toString());
-				// writeDataToFile(glassDoor, stateName);
-				System.out.println("--********************* JOB INFO ENDS***********************************--");
-			}
-
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-
 	}
 
 	public void crawl() {
@@ -223,6 +172,7 @@ public class GlassdoorJobRepoJsoup {
 				// that assign page number
 
 				String url = cityList.get(0).replaceAll("\\.htm", "");
+				String empID = null;
 				int hit = 0;
 				int totalPages = Integer.parseInt(e.getElementById("TotalPages").attr("value"));
 				System.out.println(" TOTAL PAGES " + totalPages);
@@ -234,12 +184,14 @@ public class GlassdoorJobRepoJsoup {
 					Elements elem1 = docCity.select("article#MainCol #ResultsFooter");
 
 					System.out.println("----before resultsfooter loop----");
-					//if the document has class noResult then goto label stateLoop and crawl next state
+					// if the document has class noResult then goto label
+					// stateLoop and crawl next state
 					if (wholeELement.hasClass("noResultsMessage")
 							|| (docCity.getElementById("ResultsFooter").text().matches("Page 1 of " + totalPages))
 									&& i >= 2) {
 						System.out.println(" before label stateloop ");
-						//clearing the cityList before jumping to stateLoop label
+						// clearing the cityList before jumping to stateLoop
+						// label
 						cityList.clear();
 						break stateLoop;
 					} else {
@@ -254,6 +206,10 @@ public class GlassdoorJobRepoJsoup {
 								System.out.println(
 										"--********************* JOB INFO STARTS***********************************--"
 												+ num++);
+
+								// extract data-emp-id from each li
+								empID = allElement.attr("data-emp-id");
+								// glassDoor = getCompanyInfo(empID);
 								// getting the first class named flexbox
 								Element flex = allElement.getElementsByClass("flexbox").get(0);
 
@@ -295,7 +251,7 @@ public class GlassdoorJobRepoJsoup {
 								}
 								// write glassdoor data to a file
 								System.out.println(" GLASSDOOR OBJ " + glassDoor.toString());
-								writeDataToFile(glassDoor, stateName);
+								writeDataToFile(glassDoor, stateName, empID);
 								System.out.println(
 										"--********************* JOB INFO ENDS***********************************--");
 							}
@@ -326,17 +282,24 @@ public class GlassdoorJobRepoJsoup {
 		return doc;
 	}
 
-	public void writeDataToFile(JobData glassdoor, String stateName) {
+	public void writeDataToFile(JobData glassdoor, String stateName, String empId) {
 
-		File trackerFile = new File("glassdoor/" + stateName + ".json");
+		File trackerFile = new File("test/" + stateName + ".json");
 
 		Gson gs = new GsonBuilder().disableHtmlEscaping().create();
 
 		Collection<String> glassdoorCollection = new ArrayList<String>();
 		glassdoorCollection.add(gs.toJson(glassdoor));
+
+		// write emp id to file
+
+		File employerIdFile = new File("glassdoor/employerId.txt");
+		Collection<String> EmpIDCollection = new HashSet();
+		EmpIDCollection.add(empId);
 		try {
 			// append the data
 			FileUtils.writeLines(trackerFile, glassdoorCollection, true);
+			FileUtils.writeLines(employerIdFile, EmpIDCollection, true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -346,6 +309,9 @@ public class GlassdoorJobRepoJsoup {
 	public static void main(String[] args) {
 		GlassdoorJobRepoJsoup g = new GlassdoorJobRepoJsoup();
 		g.crawl();
+		// JobData glassDoor = g.getCompanyInfo("");
+		// glassDoor.setCity("WHATEVER");
+		// System.out.println(glassDoor.toString());
 		// g.getDataFromURL();
 		// g.getCompanyInfo("https://www.glassdoor.com/job-listing/registered-nurse-rn-med-surg-stepdown-unit-st-vincent-s-east-ft-nights-72-hours-bi-weekly-saint-vincents-health-system-JV_IC1127429_KO0,89_KE90,118.htm?jl=2568690532&ctt=1508921829872");
 	}

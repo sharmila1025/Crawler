@@ -17,6 +17,7 @@ public class JobData {
 	private String description;
 	private String searchKey;
 	private int jobVersion;
+	private String employerId;
 	
 	//sourceUrl is the url of the crawled page 
 	private String sourceUrl;
@@ -99,14 +100,25 @@ public class JobData {
 	public void setSourceUrl(String sourceUrl) {
 		this.sourceUrl = sourceUrl;
 	}
+	
+	
+	public String getEmployerId() {
+		return employerId;
+	}
+	public void setEmployerId(String employerId) {
+		this.employerId = employerId;
+	}
 	@Override
 	public String toString() {
-		return "JobData [ companyName=" + companyName + ", location=" + location + ", city="
+		return "JobData [companyId=" + companyId + ", companyName=" + companyName + ", location=" + location + ", city="
 				+ city + ", industry=" + industry + ", jobTitle=" + jobTitle + ", entryDate=" + entryDate
 				+ ", companyLinkedinUrl=" + companyLinkedinUrl + ", companyDetailUrl=" + companyDetailUrl
 				+ ", description=" + description + ", searchKey=" + searchKey + ", jobVersion=" + jobVersion
-				+ ", sourceUrl=" + sourceUrl + "]";
+				+ ", employerId=" + employerId + ", sourceUrl=" + sourceUrl + "]";
 	}
+	
+	
+	
 	
 	
 }
