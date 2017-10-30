@@ -209,6 +209,7 @@ public class GlassdoorJobRepoJsoup {
 
 								// extract data-emp-id from each li
 								empID = allElement.attr("data-emp-id");
+								glassDoor.setEmployerId(empID);
 								// glassDoor = getCompanyInfo(empID);
 								// getting the first class named flexbox
 								Element flex = allElement.getElementsByClass("flexbox").get(0);
