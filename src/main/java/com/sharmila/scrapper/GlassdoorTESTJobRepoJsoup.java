@@ -12,110 +12,106 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.swing.plaf.metal.MetalIconFactory.FolderIcon16;
+
 import org.jsoup.Jsoup;
 import org.apache.commons.io.FileUtils;
+
+import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.search.SearchHit;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.jsoup.Connection.Response;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
+import com.sharmila.esclient.ElasticClient;
 import com.sharmila.scrapper.domain.CompanyData;
 import com.sharmila.scrapper.domain.JobData;
 import com.sharmila.scrapper.domain.Tracker;
+import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
+import static org.elasticsearch.index.query.QueryBuilders.*;
+import static org.elasticsearch.index.query.FilterBuilders.*;
 
-public class GlassdoorJobRepoJsoup {
-	public String htmlToText(String html) {
-		return Jsoup.parse(html).text();
-	}
+public class GlassdoorTESTJobRepoJsoup {
 
-	public List<String> readStateJobFile(String statename) {
-
-		File file = new File("glassdoor/" + statename + ".json");
-		List<String> data = null;
-		if (file.exists()) {
-
-			try {
-				data = FileUtils.readLines(file);
-				System.out.println(data);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		} else {
-
-			System.out.println("FILE doesnot exist");
-		}
-
-		return data;
-	}
+	private Client client = ElasticClient.CLIENT.getInstance();
 
 	public void getCompanyInfo() {
 
-		// read employerIdFile and crawl each unique Id
-		File employerIdFile = new File("glassdoor/employerId.txt");
+		File employerIdFile = new File("test/employerId.txt");
 		try {
 			List<String> empID = FileUtils.readLines(employerIdFile);
-			for (int i = 0; i < empID.size(); i++) {
+
+			// changing the list of string to set
+			Set<String> empIDSet = new HashSet<String>(empID);
+			System.out.println("THERE ARE " + empIDSet.size() + " UNIQUE COMPANIES ");
+
+			for (int i = 0; i < empIDSet.size(); i++) {
 				CompanyData companyData = new CompanyData();
 
 				String companyDetailsUrl = "https://www.glassdoor.com/Overview/companyOverviewBasicInfoAjax.htm?&employerId="
 						+ empID.get(i) + "&title=+Overview&linkCompetitors=true";
 				Document document = fromGoogleBot(companyDetailsUrl);
-				Elements elements = document.select("div#EmpBasicInfo.module.empBasicInfo  ");
-				System.out.println(" here ");
-				for (Element element : elements) {
+				Elements elements = document.select("div#EmpBasicInfo.module.empBasicInfo  .infoEntity");
 
-					Elements infos = element.getElementsByClass("infoEntity");
+				System.out.println("*************COMPAMY INFO STARTS*************");
+				for (Element info : elements) {
 
-					for (Element info : infos) {
-						// System.out.println(" INFO ENTITY FOUND " + info);
-						// System.out.println(info.getElementsByTag("label").text());
-						if (info.getElementsByTag("label").text().equals("Headquarters")) {
-							companyData.setHeadQuaters(info.getElementsByClass("value").text());
-							System.out.println("Headquaters " + info.getElementsByClass("value").text());
-						}
+					if (info.getElementsByTag("label").text().equals("Headquarters")) {
+						companyData.setHeadQuaters(info.getElementsByClass("value").text());
+						System.out.println("Headquaters " + info.getElementsByClass("value").text());
+					}
 
-						else if (info.getElementsByTag("label").text().equals("Industry")) {
-							List<String> industryList = new ArrayList<>();
-							industryList.add(info.getElementsByClass("value").text());
-							companyData.setIndustry(industryList);
-							System.out.println("Industry " + info.getElementsByClass("value").text());
-						}
+					else if (info.getElementsByTag("label").text().equals("Industry")) {
+						List<String> industryList = new ArrayList<>();
+						industryList.add(info.getElementsByClass("value").text());
+						companyData.setIndustry(industryList);
+						System.out.println("Industry " + info.getElementsByClass("value").text());
+					}
 
-						else if (info.getElementsByTag("label").text().equals("Website")) {
+					else if (info.getElementsByTag("label").text().equals("Website")) {
 
-							companyData.setWebsite(info.getElementsByClass("value").text());
-							System.out.println("Industry " + info.getElementsByClass("value").text());
-						} else if (info.getElementsByTag("label").text().equals("Size")) {
+						companyData.setWebsite(info.getElementsByClass("value").text());
+						System.out.println("Industry " + info.getElementsByClass("value").text());
+					} else if (info.getElementsByTag("label").text().equals("Size")) {
 
-							companyData.setSize(info.getElementsByClass("value").text());
-							System.out.println("Industry " + info.getElementsByClass("value").text());
-						} else if (info.getElementsByTag("label").text().equals("Founded")) {
+						companyData.setSize(info.getElementsByClass("value").text());
+						System.out.println("Industry " + info.getElementsByClass("value").text());
+					} else if (info.getElementsByTag("label").text().equals("Founded")) {
 
-							companyData.setFounded(info.getElementsByClass("value").text());
-							System.out.println("Founded " + info.getElementsByClass("value").text());
-						} else if (info.getElementsByTag("label").text().equals("Type")) {
+						companyData.setFounded(info.getElementsByClass("value").text());
+						System.out.println("Founded " + info.getElementsByClass("value").text());
+					} else if (info.getElementsByTag("label").text().equals("Type")) {
 
-							companyData.setType(info.getElementsByClass("value").text());
-							System.out.println("Type " + info.getElementsByClass("value").text());
-						}
-						// Revenue
-						else if (info.getElementsByTag("label").text().equals("Revenue")) {
+						companyData.setType(info.getElementsByClass("value").text());
+						System.out.println("Type " + info.getElementsByClass("value").text());
+					}
+					// Revenue
+					else if (info.getElementsByTag("label").text().equals("Revenue")) {
 
-							companyData.setRevenue(info.getElementsByClass("value").text());
-							System.out.println("revenue " + info.getElementsByClass("value").text());
-						}
+						companyData.setRevenue(info.getElementsByClass("value").text());
+						System.out.println("revenue " + info.getElementsByClass("value").text());
 					}
 
 				}
+				System.out.println("*************COMPAMY INFO ENDS***********");
 
 			}
+
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -307,13 +303,102 @@ public class GlassdoorJobRepoJsoup {
 		}
 	}
 
+	public void bulkIndex() {
+		System.out.println(" glassdoor bulk index method ");
+		// bulk index data from statenamed files
+		List<String> data = null;
+		// String data = null;
+		JSONParser parser = new JSONParser();
+		File filePath = new File("test/");
+		File[] fileList = filePath.listFiles();
+
+		try {
+			for (int j = 0; j < fileList.length; j++) {
+				if (fileList[j].isFile() && fileList[j].toString().endsWith(".json")) {
+					System.out.println("File " + fileList[j].getName());
+					File file = new File("test/" + fileList[j].getName());
+					data = FileUtils.readLines(file);
+
+					System.out.println(" the data is data " + data);
+					Object obj;
+					for (int i = 0; i < data.size(); i++) {
+						obj = parser.parse(data.get(i));
+
+						byte[] json = new ObjectMapper().writeValueAsBytes(obj);
+
+						BulkRequestBuilder reqBuilder = client.prepareBulk();
+						reqBuilder.add(client.prepareIndex("crawldata", "glassdoor").setSource(json));
+						BulkResponse response = reqBuilder.execute().actionGet();
+						System.out.println(" the bulk response is " + response.hasFailures());
+					}
+				}
+
+			}
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	// get companyId and put into hashset
+	public Set<String> getCompanyIdList() {
+		Set<String> companyIdSet = new HashSet();
+
+		QueryBuilder qBuilder = matchAllQuery();
+		SearchResponse res = client.prepareSearch("crawldata").setTypes("glassdoor").setQuery(qBuilder).setSize(800)
+				.execute().actionGet();
+
+		Object a = null;
+		for (SearchHit h : res.getHits()) {
+			System.out.println(h.getSource());
+			if (h.getSource().containsKey("employerId")) {
+				a = h.getSource().get("employerId");
+
+			}
+			companyIdSet.add(a.toString());
+		}
+
+		// writing the set to the file
+		File file = new File("test/employerId.txt");
+		try {
+			FileUtils.writeLines(file, companyIdSet, true);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return companyIdSet;
+	}
+
+	public List<String> readStateJobFile(String fileName) {
+
+		File file = new File(fileName);
+		List<String> data = null;
+		if (file.exists()) {
+
+			try {
+				data = FileUtils.readLines(file);
+				System.out.println(data);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		} else {
+
+			System.out.println("FILE doesnot exist");
+		}
+
+		return data;
+	}
+
 	public static void main(String[] args) {
-		GlassdoorJobRepoJsoup g = new GlassdoorJobRepoJsoup();
-		g.crawl();
-		// JobData glassDoor = g.getCompanyInfo("");
-		// glassDoor.setCity("WHATEVER");
-		// System.out.println(glassDoor.toString());
-		// g.getDataFromURL();
-		// g.getCompanyInfo("https://www.glassdoor.com/job-listing/registered-nurse-rn-med-surg-stepdown-unit-st-vincent-s-east-ft-nights-72-hours-bi-weekly-saint-vincents-health-system-JV_IC1127429_KO0,89_KE90,118.htm?jl=2568690532&ctt=1508921829872");
+		GlassdoorTESTJobRepoJsoup g = new GlassdoorTESTJobRepoJsoup();
+		// g.crawl();
+		// g.bulkIndex();
+		// g.getCompanyIdList();
+		g.getCompanyInfo();
 	}
 }

@@ -19,6 +19,7 @@ public class JobData {
 	private int jobVersion;
 	private String employerId;
 	
+	
 	//sourceUrl is the url of the crawled page 
 	private String sourceUrl;
 	
