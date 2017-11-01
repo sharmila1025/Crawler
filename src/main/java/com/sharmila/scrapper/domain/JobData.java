@@ -17,11 +17,18 @@ public class JobData {
 	private String description;
 	private String searchKey;
 	private int jobVersion;
+	private String crawlSource;
+	private String website;
 	private String employerId;
 	
 	
-	//sourceUrl is the url of the crawled page 
-	private String sourceUrl;
+	private String size;
+	private String type;
+	private String revenue;
+	//private String headQuaters;
+	private String founded;
+	
+	
 	
 	public String getCompanyId() {
 		return companyId;
@@ -95,31 +102,48 @@ public class JobData {
 	public void setCompanyDetailUrl(String companyDetailUrl) {
 		this.companyDetailUrl = companyDetailUrl;
 	}
-	public String getSourceUrl() {
-		return sourceUrl;
+	public String getCrawlSource() {
+		return crawlSource;
 	}
-	public void setSourceUrl(String sourceUrl) {
-		this.sourceUrl = sourceUrl;
+	public void setCrawlSource(String crawlSource) {
+		this.crawlSource = crawlSource;
 	}
-	
-	
+	public String getWebsite() {
+		return website;
+	}
+	public void setWebsite(String website) {
+		this.website = website;
+	}
 	public String getEmployerId() {
 		return employerId;
 	}
 	public void setEmployerId(String employerId) {
 		this.employerId = employerId;
 	}
-	@Override
-	public String toString() {
-		return "JobData [companyId=" + companyId + ", companyName=" + companyName + ", location=" + location + ", city="
-				+ city + ", industry=" + industry + ", jobTitle=" + jobTitle + ", entryDate=" + entryDate
-				+ ", companyLinkedinUrl=" + companyLinkedinUrl + ", companyDetailUrl=" + companyDetailUrl
-				+ ", description=" + description + ", searchKey=" + searchKey + ", jobVersion=" + jobVersion
-				+ ", employerId=" + employerId + ", sourceUrl=" + sourceUrl + "]";
+	public String getSize() {
+		return size;
+	}
+	public void setSize(String size) {
+		this.size = size;
+	}
+	public String getType() {
+		return type;
+	}
+	public void setType(String type) {
+		this.type = type;
+	}
+	public String getRevenue() {
+		return revenue;
+	}
+	public void setRevenue(String revenue) {
+		this.revenue = revenue;
 	}
 	
-	
-	
-	
+	public String getFounded() {
+		return founded;
+	}
+	public void setFounded(String founded) {
+		this.founded = founded;
+	}
 	
 }
