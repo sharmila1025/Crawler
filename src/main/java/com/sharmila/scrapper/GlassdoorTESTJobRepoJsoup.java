@@ -38,7 +38,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.sharmila.esclient.ElasticClient;
-import com.sharmila.scrapper.domain.CompanyData;
+import com.sharmila.scrapper.domain.BuyingIntentData;
 import com.sharmila.scrapper.domain.JobData;
 import com.sharmila.scrapper.domain.Tracker;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
@@ -59,7 +59,7 @@ public class GlassdoorTESTJobRepoJsoup {
 			System.out.println("the empId " + empID.size());
 			for (String s : empID) {
 
-				JobData companyData = new JobData();
+				BuyingIntentData companyData = new BuyingIntentData();
 
 				String companyDetailsUrl = "https://www.glassdoor.com/Overview/companyOverviewBasicInfoAjax.htm?&employerId="
 						+ s + "&title=+Overview&linkCompetitors=true";
@@ -177,7 +177,7 @@ public class GlassdoorTESTJobRepoJsoup {
 				int totalPages = Integer.parseInt(e.getElementById("TotalPages").attr("value"));
 				System.out.println(" TOTAL PAGES " + totalPages);
 				// add the job data to the jobDataList
-				List<JobData> jobDataList = new ArrayList<>();
+				List<String> jobDataList = new ArrayList<>();
 				for (int i = 1; i <= totalPages; i++) {
 					// construct uri to crawl through each page
 					System.out.println("THIS " + "https://www.glassdoor.com" + url + "_IP" + i + ".htm");
@@ -217,14 +217,14 @@ public class GlassdoorTESTJobRepoJsoup {
 								// getting the first class named flexbox
 								Element flex = allElement.getElementsByClass("flexbox").get(0);
 
-								System.out.println();
-								System.out.println();
 								Set<String> titleSet = new HashSet<>();
-								System.out.println("---Title ---" + flex.getElementsByClass("jobLink").text());
+								// System.out.println("---Title ---" +
+								// flex.getElementsByClass("jobLink").text());
 								titleSet.add(allElement.getElementsByClass("jobLink").text());
-								System.out.println(" JOB LINK ----" + "https://www.glassdoor.com"
-										+ flex.getElementsByClass("jobLink").attr("href"));
-								glassDoor.setCompanyDetailUrl(
+								// System.out.println(" JOB LINK ----" +
+								// "https://www.glassdoor.com"+
+								// flex.getElementsByClass("jobLink").attr("href"));
+								glassDoor.setJobDetailUrl(
 										"https://www.glassdoor.com" + flex.getElementsByClass("jobLink").attr("href"));
 
 								glassDoor.setJobTitle(titleSet);
@@ -232,45 +232,46 @@ public class GlassdoorTESTJobRepoJsoup {
 								Elements jobLocationTime = allElement.getElementsByClass("empLoc");
 
 								for (Element ejobLocationTime : jobLocationTime) {
-									System.out.println();
-									System.out.println();
 
 									String[] companyName = ejobLocationTime.getElementsByTag("div").get(0).text()
 											.split("–");
-									System.out.println("---Company name--" + companyName[0]);
-
-									System.out.println(
-											"---Location name--" + ejobLocationTime.getElementsByClass("loc").text());
+									// System.out.println("---Company name--" +
+									// companyName[0]);
+									//
+									// System.out.println(
+									// "---Location name--" +
+									// ejobLocationTime.getElementsByClass("loc").text());
 									glassDoor.setCompanyName(companyName[0]);
 									glassDoor.setLocation(ejobLocationTime.getElementsByClass("loc").text());
-									System.out.println();
-									System.out.println();
 
 								}
 								Elements time = allElement.getElementsByClass("showHH");
 
 								for (Element t : time) {
-									System.out.println(" text " + t.getElementsByTag("span").get(0).text());
+									// System.out.println(" text " +
+									// t.getElementsByTag("span").get(0).text());
 									glassDoor.setEntryDate(t.getElementsByTag("span").get(0).text());
 								}
 								// write glassdoor data to a file
 								System.out.println(" GLASSDOOR OBJ " + glassDoor.toString());
 
 								writeDataToFile(glassDoor, stateName, empID);
-								jobDataList.add(glassDoor);
+								jobDataList.add(new Gson().toJson(glassDoor));
 								System.out.println(
 										"--********************* JOB INFO ENDS***********************************--");
 							}
-							boolean failure = bulkIndex(jobDataList);
-							if (failure == false) {
-								jobDataList.clear();
-							}
-							System.out.println(jobDataList.size());
 
 						}
-						System.out.println("sdfsd" + jobDataList.size());
 
 					}
+					for (int k = 0; k < jobDataList.size(); k++) {
+						System.out.println(" ------- " + jobDataList.get(k));
+					}
+					System.out.println("job List size " + jobDataList.size());
+					bulkIndex(jobDataList, "glassdoorjob");
+
+					jobDataList.clear();
+
 				}
 
 			}
@@ -320,11 +321,12 @@ public class GlassdoorTESTJobRepoJsoup {
 		}
 	}
 
-	public boolean bulkIndex(List<JobData> jobList) {
+	public boolean bulkIndex(List<String> jobList, String docName) {
 		System.out.println(" THE JOB LIST SIZE IS " + jobList.size());
 		boolean failure = true;
 		System.out.println(" glassdoor bulk index method ");
 		for (int j = 0; j < jobList.size(); j++) {
+			System.out.println("---" + jobList.get(j).toString());
 
 			JSONParser parser = new JSONParser();
 			// File filePath = new File("test/");
@@ -337,14 +339,17 @@ public class GlassdoorTESTJobRepoJsoup {
 
 				Object obj;
 
-				data = new Gson().toJson(jobList.get(j));
-				obj = parser.parse(data);
+				// data = new Gson().toJson(jobList.get(j));
+				obj = parser.parse(jobList.get(j));
 
 				byte[] json = new ObjectMapper().writeValueAsBytes(obj);
 
 				BulkRequestBuilder reqBuilder = client.prepareBulk();
-				reqBuilder.add(client.prepareIndex("crawldata", "glassdoor").setSource(json));
+
+				reqBuilder.add(client.prepareIndex("crawldata", docName).setSource(json));
+
 				bulkResponse = reqBuilder.execute().actionGet();
+				System.out.println(" The job data is " + json);
 				System.out.println(" the bulk response has failures " + bulkResponse.hasFailures());
 			}
 
@@ -359,36 +364,49 @@ public class GlassdoorTESTJobRepoJsoup {
 				failure = false;
 			}
 		}
+		jobList.clear();
 		return failure;
 	}
 
 	// get companyId and put into hashset
 	public HashSet<String> getCompanyIdList() {
 		Set<String> companyIdSet = new HashSet();
+		File filePath = new File("test/");
+		File[] fileList = filePath.listFiles();
 
-		QueryBuilder qBuilder = matchAllQuery();
-		SearchResponse res = client.prepareSearch("crawldata").setTypes("glassdoor").setQuery(qBuilder).setSize(100)
-				.execute().actionGet();
-
-		Object obj = null;
-		for (SearchHit searchHits : res.getHits()) {
-			System.out.println(searchHits.getSource());
-			if (searchHits.getSource().containsKey("employerId")) {
-				obj = searchHits.getSource().get("employerId");
+		for (int j = 0; j < fileList.length; j++) {
+			if (fileList[j].isFile() && fileList[j].toString().endsWith(".json")) {
+				String job = null;
+				File file = new File(filePath.toString() + fileList[j]);
+				try {
+					FileUtils.readLines(file, job);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				JSONObject jsonObj = null;
+				try {
+					jsonObj = new JSONObject(job);
+					companyIdSet.add(jsonObj.getString("employerId"));
+					// writing the set to the file
+					File fileEmpId = new File("test/employerId.txt");
+					try {
+						FileUtils.writeLines(fileEmpId, companyIdSet, true);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				} catch (JSONException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 
 			}
-			companyIdSet.add(obj.toString());
+
 		}
 
-		// writing the set to the file
-		File file = new File("test/employerId.txt");
-		try {
-			FileUtils.writeLines(file, companyIdSet, true);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 		return (HashSet<String>) companyIdSet;
+
 	}
 
 	public List<String> readStateJobFile(String fileName) {
@@ -414,9 +432,9 @@ public class GlassdoorTESTJobRepoJsoup {
 
 	public static void main(String[] args) {
 		GlassdoorTESTJobRepoJsoup g = new GlassdoorTESTJobRepoJsoup();
-		// g.crawl();
+		g.crawl();
 
 		g.getCompanyIdList();
-		g.getCompanyInfo();
+		// g.getCompanyInfo();
 	}
 }
