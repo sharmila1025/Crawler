@@ -424,9 +424,10 @@ public class GDev {
 						JSONObject jsonObj = new JSONObject(data.get(i));
 
 						System.out.println(" the employer id " + jsonObj.getString("employerId"));
-						companyIdSet.add(jsonObj.getString("employerId"));
-						jobCrawl(jsonObj.getString("companyName"), (jsonObj.getString("location")),
-								jsonObj.getString("employerId"));
+						
+						companyIdSet.add(jsonObj.getString("employerId") +"##"+jsonObj.getString("companyName")+"##"+jsonObj.getString("location"));
+//						jobCrawl(jsonObj.getString("companyName"), (jsonObj.getString("location")),
+//								jsonObj.getString("employerId"));
 
 					}
 
@@ -484,27 +485,62 @@ public class GDev {
 					.data("sc.keyword", companyName).data("LocationSearch", location).data("locT", "").data("locId", "")
 					.data("jobType", "").referrer("http://www.google.com").followRedirects(true).execute();
 
+			Set<String> titleSet = new HashSet<>();
 			Document document = response.parse();
+			Collection<String> titleCollection = new ArrayList<>();
+			String url = response.url().toString().replaceAll("\\.htm", "");
 
-			Elements element = document.select("#JobResults ul.jlGrid li.jl");
+			Elements eleMain = document.select("#JobResults article#MainCol");
+			nextCompanySearch:
 
-			for (Element e : element) {
-				System.out.println(e);
+			for (Element e1 : eleMain) {
 
-				// if the employerId matches then update the job titiles
+				int totalPages = Integer.parseInt(e1.getElementById("TotalPages").attr("value"));
+				System.out.println(" total pages " + totalPages);
+				for (int i = 1; i < totalPages; i++) {
 
-				// extract data-emp-id from each li
-				String empID = e.attr("data-emp-id");
-				if (empID.equalsIgnoreCase(employerId)) {
-					System.out.println("Employer id from page " + empID + " employer id from file data " + employerId);
-					// now only crawl through the data
-					Set<String> titleSet = new HashSet<>();
+					// crawl over total pages given
+					Document docPage = fromGoogleBot(url + "_IP" + i + ".htm");
+					Elements element = docPage.select("#JobResults ul.jlGrid li.jl");
+					Elements wholeElement = docPage.select("*");
+					System.out.println("URL  " + url + "_IP" + i + ".htm");
+					if (wholeElement.hasClass("noResultsMessage")
+							|| (docPage.getElementById("ResultsFooter").text().matches("Page 1 of " + totalPages))
+									&& i >= 2) {
+						System.out.println(" before label nextCompanySearch ");
+						break nextCompanySearch;
+					} else {
+						for (Element e : element) {
+							// extract data-emp-id from each li
+							String empID = e.attr("data-emp-id");
 
-					titleSet.add(e.getElementsByClass("jobLink").text());
-					System.out.println(" the title set is " + titleSet);
+							// if the employerId matches then update the job
+							// titles
+
+							if (empID.equalsIgnoreCase(employerId)) {
+								System.out.println(
+										"Employer id from page " + empID + " employer id from file data " + employerId);
+								// now only crawl through the data
+
+								titleSet.add(e.getElementsByClass("jobLink").text());
+
+							}
+
+						}
+
+					}
 
 				}
+				System.out.println(
+						" The title for the company " + companyName + "and location " + location + " is " + titleSet);
+				String titleData = " The title for the company " + companyName + "and location " + location + " is "
+						+ titleSet;
 
+				titleCollection.add(titleData);
+				FileUtils.writeLines(new File("test/titleData.txt"), titleCollection, true);
+				titleSet.clear();
+				titleCollection.clear();
+				System.out.println("************* The end of job crawl using form *******************");
 			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
