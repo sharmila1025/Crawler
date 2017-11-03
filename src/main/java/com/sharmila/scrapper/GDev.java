@@ -45,12 +45,12 @@ public class GDev {
 			Set<String> empID = new HashSet<>(empIDList);
 			List<String> companyDataList = new ArrayList<>();
 			System.out.println("the empId " + empID.size());
-			for (int i = 3130; i < empID.size(); i++) {
-
+			for (String s : empID) {
+				String[] id = s.split("##");
 				BuyingIntentData companyData = new BuyingIntentData();
 
 				String companyDetailsUrl = "https://www.glassdoor.com/Overview/companyOverviewBasicInfoAjax.htm?&employerId="
-						+ i + "&title=+Overview&linkCompetitors=true";
+						+ id[0] + "&title=+Overview&linkCompetitors=true";
 				System.out.println(companyDetailsUrl + "\n");
 				Document document = fromGoogleBot(companyDetailsUrl);
 
@@ -104,7 +104,7 @@ public class GDev {
 							companyData.setRevenue(info.getElementsByClass("value").text());
 							System.out.println("revenue " + info.getElementsByClass("value").text());
 						}
-						companyData.setEmployerId(String.valueOf(i));
+						companyData.setEmployerId(s);
 
 						//
 					}
@@ -424,10 +424,12 @@ public class GDev {
 						JSONObject jsonObj = new JSONObject(data.get(i));
 
 						System.out.println(" the employer id " + jsonObj.getString("employerId"));
-						
-						companyIdSet.add(jsonObj.getString("employerId") +"##"+jsonObj.getString("companyName")+"##"+jsonObj.getString("location"));
-//						jobCrawl(jsonObj.getString("companyName"), (jsonObj.getString("location")),
-//								jsonObj.getString("employerId"));
+
+						companyIdSet.add(jsonObj.getString("employerId") + "##" + jsonObj.getString("companyName")
+								+ "##" + jsonObj.getString("location"));
+						// jobCrawl(jsonObj.getString("companyName"),
+						// (jsonObj.getString("location")),
+						// jsonObj.getString("employerId"));
 
 					}
 
