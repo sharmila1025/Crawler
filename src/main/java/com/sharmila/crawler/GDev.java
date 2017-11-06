@@ -383,6 +383,8 @@ public class GDev {
 
 	// get companyId and put into hashset
 	public HashSet<String> getCompanyIdList() {
+
+		Set<String> companyId = new HashSet<>();
 		Set<String> companyIdSet = new HashSet<>();
 		/*
 		 * QueryBuilder qBuilder = matchAllQuery(); SearchResponse res =
@@ -407,7 +409,7 @@ public class GDev {
 
 		File filePath = new File("test/");
 		File[] fileList = filePath.listFiles();
-		JSONParser parser = new JSONParser();
+
 		List<String> data = null;
 
 		for (int j = 0; j < fileList.length; j++) {
@@ -417,16 +419,14 @@ public class GDev {
 				try {
 					data = FileUtils.readLines(file);
 					System.out.println(" the data size :" + data.size());
-					Object obj;
+
 					for (int i = 0; i < data.size(); i++) {
 						System.out.println(" data class " + data.get(i).getClass());
 						;
 						JSONObject jsonObj = new JSONObject(data.get(i));
 
 						System.out.println(" the employer id " + jsonObj.getString("employerId"));
-
-						companyIdSet.add(jsonObj.getString("employerId") + "##" + jsonObj.getString("companyName")
-								+ "##" + jsonObj.getString("location"));
+						companyId.add(jsonObj.getString("employerId"));
 
 					}
 
@@ -441,13 +441,62 @@ public class GDev {
 			}
 
 		}
+		data.clear();
 		System.out.println("********************");
-		System.out.println(" There are " + companyIdSet.size() + " companies in ES ");
+		System.out.println(" There are " + companyId.size() + " companies in ES ");
 		try {
-			FileUtils.writeLines(new File("test/employerId.txt"), companyIdSet, true);
+			FileUtils.writeLines(new File("test/employerId.txt"), companyId, true);
+			companyId.clear();
+			List<String> empIdList = FileUtils.readLines(new File("test/employerId.txt"));
+			companyId = new HashSet<>(empIdList);
+			Map<String, String> companyLocation = new HashMap<>();
+			Map<String, Map<String, String>> companyInfoMap = new HashMap<>();
+			for (int j = 0; j < fileList.length; j++) {
+				if (fileList[j].isFile() && fileList[j].toString().endsWith(".json")) {
+					File file1 = new File("test/" + fileList[j].getName());
+					data = FileUtils.readLines(file1);
+					System.out.println(" the data size :" + data.size());
 
-		} catch (IOException e) {
+					for (int i = 0; i < data.size(); i++) {
+
+						JSONObject jsonObj = new JSONObject(data.get(i));
+						for (String empId : companyId) {
+							if (empId.equals(jsonObj.getString("employerId"))) {
+								// now write to file
+
+								if (companyInfoMap.containsKey(jsonObj.getString("employerId"))) {
+									System.out.println("do not save the information");
+								} else {
+									companyLocation.put(jsonObj.getString("companyName"),
+											jsonObj.getString("location"));
+									companyInfoMap.put(jsonObj.getString("employerId"), companyLocation);
+									companyIdSet.add(jsonObj.getString("employerId") + "##" + jsonObj.getString("companyName")
+									+ "##" + jsonObj.getString("location"));
+								}
+
+							}
+						}
+					}
+
+				}
+			}
+
+			for (Map.Entry<String, Map<String, String>> map : companyInfoMap.entrySet()) {
+				System.out.println(" key "+map.getKey());
+//				for (Map.Entry<String, String> innerMap : map.getValue().entrySet()) {
+//					companyIdSet.add(map.getKey() + "##" + innerMap.getKey() + "##" + innerMap.getValue());
+//				}
+			}
+
+			FileUtils.writeLines(new File("test/employerIdLocation.txt"), companyIdSet, true);
+
+		} catch (
+
+		IOException e) {
 			// TODO Auto-generated
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return (HashSet<String>) companyIdSet;
 
@@ -565,9 +614,9 @@ public class GDev {
 		GDev g = new GDev();
 		// g.crawl();
 
-		// g.getCompanyIdList();
-
-		//g.getCompanyInfo();
-		g.jobCrawl();
+		g.getCompanyIdList();
+		
+		// g.getCompanyInfo();
+		// g.jobCrawl();
 	}
 }
