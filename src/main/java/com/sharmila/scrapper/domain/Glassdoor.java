@@ -2,16 +2,14 @@ package com.sharmila.scrapper.domain;
 
 public class Glassdoor {
 
-
-
-   
 	private String title; 
-	
 	private String companyName;
 	private String jobPostDate;
 	private String companyIndustry;
 	private String validThrough;
 	private String source;
+	
+	
 	public String getCompanyName() {
 		return companyName;
 	}

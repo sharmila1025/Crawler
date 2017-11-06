@@ -26,7 +26,13 @@ dependencies {
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
+    // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-gradle-plugin
+compile group: 'org.springframework.boot', name: 'spring-boot-gradle-plugin', version: '1.5.8.RELEASE'
     
+    
+    compile 'org.springframework:spring-core:4.1.2.RELEASE'
+	compile 'org.springframework:spring-web:4.1.2.RELEASE'
+	compile 'org.springframework:spring-webmvc:4.2.0.RELEASE'
 	    // https://mvnrepository.com/artifact/org.jsoup/jsoup
 	compile group: 'org.jsoup', name: 'jsoup', version: '1.7.2'
 	
